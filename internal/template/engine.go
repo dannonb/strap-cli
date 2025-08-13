@@ -226,10 +226,8 @@ func (e *Engine) getTemplateVariables(service, technology string) map[string]int
 // getDefaultBackendPort returns the default port for backend technologies
 func (e *Engine) getDefaultBackendPort(technology string) int {
 	switch technology {
-	case "fastapi":
+	case "fastapi", "express":
 		return 8000
-	case "express":
-		return 3000
 	case "gin":
 		return 8080
 	default:
