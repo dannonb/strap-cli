@@ -5,7 +5,7 @@ A CLI tool written in Go that generates complete microservice project structures
 ## Project Structure
 
 ```
-microservice-bootstrapper/
+strap-cli/
 ├── cmd/                    # Application entry points
 │   └── main.go            # Main application entry point
 ├── internal/              # Private application code

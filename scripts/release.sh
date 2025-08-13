@@ -5,7 +5,7 @@ set -e
 
 # Configuration
 BINARY_NAME="strap"
-REPO_URL="https://github.com/your-org/microservice-bootstrapper"
+REPO_URL="https://github.com/dannonb/strap-cli"
 
 # Colors for output
 RED='\033[0;31m'

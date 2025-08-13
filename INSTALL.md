@@ -12,12 +12,12 @@ This guide covers different ways to install the Microservice Bootstrapper CLI to
 
 ### 1. Download Pre-built Binaries (Recommended)
 
-Download the latest release for your platform from the [releases page](https://github.com/your-org/microservice-bootstrapper/releases).
+Download the latest release for your platform from the [releases page](https://github.com/dannonb/strap-cli/releases).
 
 #### Linux/macOS
 ```bash
 # Download and extract (replace with actual release URL)
-curl -L https://github.com/your-org/microservice-bootstrapper/releases/latest/download/strap-linux-amd64.tar.gz | tar xz
+curl -L https://github.com/dannonb/strap-cli/releases/latest/download/strap-linux-amd64.tar.gz | tar xz
 
 # Move to PATH
 sudo mv strap-linux-amd64/strap /usr/local/bin/
@@ -42,8 +42,8 @@ strap --version
 #### Linux/macOS
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/microservice-bootstrapper.git
-cd microservice-bootstrapper
+git clone https://github.com/dannonb/strap-cli.git
+cd strap-cli
 
 # Build and install
 make build
@@ -56,8 +56,8 @@ make build-all
 #### Windows
 ```powershell
 # Clone the repository
-git clone https://github.com/your-org/microservice-bootstrapper.git
-cd microservice-bootstrapper
+git clone https://github.com/dannonb/strap-cli.git
+cd strap-cli
 
 # Build for current platform
 .\build.ps1 -Target build
@@ -71,19 +71,19 @@ cd microservice-bootstrapper
 #### Homebrew (macOS/Linux)
 ```bash
 # Coming soon
-brew install microservice-bootstrapper
+brew install strap-cli
 ```
 
 #### Chocolatey (Windows)
 ```powershell
 # Coming soon
-choco install microservice-bootstrapper
+choco install strap-cli
 ```
 
 #### Scoop (Windows)
 ```powershell
 # Coming soon
-scoop install microservice-bootstrapper
+scoop install strap-cli
 ```
 
 ## Verification
@@ -173,5 +173,5 @@ sudo rm /usr/local/bin/strap
 
 - Run `strap --help` for usage information
 - Run `strap create --help` for detailed create command help
-- Check the [documentation](https://github.com/your-org/microservice-bootstrapper/docs)
-- Report issues on [GitHub](https://github.com/your-org/microservice-bootstrapper/issues)
+- Check the [documentation](https://github.com/dannonb/strap-cli/docs)
+- Report issues on [GitHub](https://github.com/dannonb/strap-cli/issues)

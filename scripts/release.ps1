@@ -6,7 +6,7 @@ param(
 
 # Configuration
 $BinaryName = "strap"
-$RepoUrl = "https://github.com/your-org/microservice-bootstrapper"
+$RepoUrl = "https://github.com/dannonb/strap-cli"
 
 # Helper functions
 function Write-Info {

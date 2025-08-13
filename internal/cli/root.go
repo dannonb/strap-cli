@@ -60,7 +60,7 @@ supported technologies, and system information.`,
 		fmt.Println("  Frontends: react, vue, angular")
 		fmt.Println("  Databases: mongo, postgres, mysql, redis")
 		fmt.Println()
-		fmt.Println("🔗 More information: https://github.com/your-org/microservice-bootstrapper")
+		fmt.Println("🔗 More information: https://github.com/dannonb/strap-cli")
 	},
 }
 
