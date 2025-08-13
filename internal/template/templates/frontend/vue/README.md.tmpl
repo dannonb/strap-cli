@@ -1,0 +1,89 @@
+# {{.ProjectName}} Vue.js Frontend
+
+A Vue.js frontend application for {{.ProjectName}}.
+
+## Features
+
+- Vue 3 with Composition API support
+- Vue Router for single-page application routing
+- Vue CLI for development and build tooling
+- Modern JavaScript (ES6+) support
+- CSS scoped styling
+- Hot reload development server
+- Production-optimized builds
+- Docker support with Nginx
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- npm
+
+### Local Development
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Start the development server:
+```bash
+npm run serve
+```
+
+The application will be available at http://localhost:8080
+
+### Production Build
+
+```bash
+npm run build
+```
+
+### Docker Development
+
+1. Build the Docker image:
+```bash
+docker build -t {{.ProjectName}}-frontend .
+```
+
+2. Run the container:
+```bash
+docker run -p 80:80 {{.ProjectName}}-frontend
+```
+
+## Available Scripts
+
+- `npm run serve` - Start development server with hot reload
+- `npm run build` - Create production build
+- `npm run test:unit` - Run unit tests
+- `npm run lint` - Lint and fix files
+
+## Project Structure
+
+```
+.
+├── public/
+│   ├── index.html      # HTML template
+│   └── favicon.ico     # App icon
+├── src/
+│   ├── App.vue         # Main App component
+│   ├── main.js         # Application entry point
+│   ├── router/
+│   │   └── index.js    # Router configuration
+│   └── views/
+│       └── HomeView.vue # Home page component
+├── package.json        # Dependencies and scripts
+├── Dockerfile         # Docker configuration
+├── nginx.conf         # Nginx configuration for production
+├── .gitignore        # Git ignore rules
+└── README.md         # This file
+```
+
+## Customization
+
+- Modify `src/App.vue` to update the main application layout
+- Add new views in the `src/views/` directory
+- Create reusable components in the `src/components/` directory
+- Update routes in `src/router/index.js`
+- Configure API endpoints to connect with your backend service

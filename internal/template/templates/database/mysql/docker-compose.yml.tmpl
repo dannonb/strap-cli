@@ -1,0 +1,22 @@
+  mysql:
+    image: mysql:8.0
+    container_name: {{.ProjectName}}-mysql
+    restart: unless-stopped
+    ports:
+      - "{{.Database.Port}}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: {{.Database.Environment.MYSQL_ROOT_PASSWORD}}
+      MYSQL_DATABASE: {{.Database.Environment.MYSQL_DATABASE}}
+      MYSQL_USER: {{.Database.Environment.MYSQL_USER}}
+      MYSQL_PASSWORD: {{.Database.Environment.MYSQL_PASSWORD}}
+    volumes:
+      - {{.Database.Volume}}:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - {{.ProjectName}}-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "{{.Database.Environment.MYSQL_USER}}", "-p{{.Database.Environment.MYSQL_PASSWORD}}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: --default-authentication-plugin=mysql_native_password

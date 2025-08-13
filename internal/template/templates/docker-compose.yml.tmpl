@@ -1,0 +1,162 @@
+version: '3.8'
+
+services:
+{{- if .Backend }}
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: {{.ProjectName}}-backend
+    restart: unless-stopped
+    ports:
+      - "{{.Ports.Backend}}:{{.Ports.Backend}}"
+    environment:
+{{- range $key, $value := .Backend.Environment }}
+      {{$key}}: {{$value}}
+{{- end }}
+{{- if .Database }}
+      # Database connection environment variables
+{{- if eq .Database.Type "postgres" }}
+      DATABASE_URL: postgresql://{{.Database.Environment.POSTGRES_USER}}:{{.Database.Environment.POSTGRES_PASSWORD}}@postgres:5432/{{.Database.Environment.POSTGRES_DB}}
+{{- else if eq .Database.Type "mongo" }}
+      MONGODB_URL: mongodb://{{.Database.Environment.MONGO_INITDB_ROOT_USERNAME}}:{{.Database.Environment.MONGO_INITDB_ROOT_PASSWORD}}@mongo:27017/{{.Database.Environment.MONGO_INITDB_DATABASE}}?authSource=admin
+{{- else if eq .Database.Type "mysql" }}
+      DATABASE_URL: mysql://{{.Database.Environment.MYSQL_USER}}:{{.Database.Environment.MYSQL_PASSWORD}}@mysql:3306/{{.Database.Environment.MYSQL_DATABASE}}
+{{- else if eq .Database.Type "redis" }}
+      REDIS_URL: redis://redis:6379
+{{- end }}
+{{- end }}
+    networks:
+      - {{.ProjectName}}-network
+{{- if .Database }}
+    depends_on:
+{{- if eq .Database.Type "postgres" }}
+      postgres:
+        condition: service_healthy
+{{- else }}
+      {{.Database.Type}}:
+        condition: service_started
+{{- end }}
+{{- end }}
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+{{- end }}
+
+{{- if .Frontend }}
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: {{.ProjectName}}-frontend
+    restart: unless-stopped
+    ports:
+      - "{{.Ports.Frontend}}:{{.Ports.Frontend}}"
+    environment:
+{{- range $key, $value := .Frontend.Environment }}
+      {{$key}}: {{$value}}
+{{- end }}
+{{- if .Backend }}
+      # Backend API URL
+      REACT_APP_API_URL: http://localhost:{{.Ports.Backend}}
+      VUE_APP_API_URL: http://localhost:{{.Ports.Backend}}
+      NG_APP_API_URL: http://localhost:{{.Ports.Backend}}
+{{- end }}
+    networks:
+      - {{.ProjectName}}-network
+{{- if .Backend }}
+    depends_on:
+      - backend
+{{- end }}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+{{- end }}
+
+{{- if .Database }}
+{{- if eq .Database.Type "postgres" }}
+  postgres:
+    image: postgres:16
+    container_name: {{.ProjectName}}-postgres
+    restart: unless-stopped
+    ports:
+      - "{{.Database.Port}}:5432"
+    environment:
+      POSTGRES_DB: {{.Database.Environment.POSTGRES_DB}}
+      POSTGRES_USER: {{.Database.Environment.POSTGRES_USER}}
+      POSTGRES_PASSWORD: {{.Database.Environment.POSTGRES_PASSWORD}}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - {{.Database.Volume}}:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - {{.ProjectName}}-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{.Database.Environment.POSTGRES_USER}} -d {{.Database.Environment.POSTGRES_DB}}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+{{- else if eq .Database.Type "mongo" }}
+  mongo:
+    image: mongo:7.0
+    container_name: {{.ProjectName}}-mongo
+    restart: unless-stopped
+    ports:
+      - "{{.Database.Port}}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: {{.Database.Environment.MONGO_INITDB_ROOT_USERNAME}}
+      MONGO_INITDB_ROOT_PASSWORD: {{.Database.Environment.MONGO_INITDB_ROOT_PASSWORD}}
+      MONGO_INITDB_DATABASE: {{.Database.Environment.MONGO_INITDB_DATABASE}}
+    volumes:
+      - {{.Database.Volume}}:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - {{.ProjectName}}-network
+{{- else if eq .Database.Type "mysql" }}
+  mysql:
+    image: mysql:8.0
+    container_name: {{.ProjectName}}-mysql
+    restart: unless-stopped
+    ports:
+      - "{{.Database.Port}}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: {{.Database.Environment.MYSQL_ROOT_PASSWORD}}
+      MYSQL_DATABASE: {{.Database.Environment.MYSQL_DATABASE}}
+      MYSQL_USER: {{.Database.Environment.MYSQL_USER}}
+      MYSQL_PASSWORD: {{.Database.Environment.MYSQL_PASSWORD}}
+    volumes:
+      - {{.Database.Volume}}:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - {{.ProjectName}}-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "{{.Database.Environment.MYSQL_USER}}", "-p{{.Database.Environment.MYSQL_PASSWORD}}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+{{- else if eq .Database.Type "redis" }}
+  redis:
+    image: redis:7.2-alpine
+    container_name: {{.ProjectName}}-redis
+    restart: unless-stopped
+    ports:
+      - "{{.Database.Port}}:6379"
+    volumes:
+      - {{.Database.Volume}}:/data
+      - ./redis-config/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - {{.ProjectName}}-network
+    command: redis-server /usr/local/etc/redis/redis.conf
+{{- end }}
+{{- end }}
+
+networks:
+  {{.ProjectName}}-network:
+    driver: bridge
+    name: {{.ProjectName}}-network
+
+volumes:
+{{- if .Database }}
+  {{.Database.Volume}}:
+    driver: local
+{{- end }}

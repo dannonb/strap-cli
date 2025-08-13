@@ -1,0 +1,86 @@
+<template>
+  <div class="home">
+    <div class="hero">
+      <h1>{{projectName}}</h1>
+      <p>Welcome to your new microservice project!</p>
+      <div class="features">
+        <div class="feature">
+          <h3>🚀 Fast Development</h3>
+          <p>Get started quickly with pre-configured templates</p>
+        </div>
+        <div class="feature">
+          <h3>🔧 Modern Stack</h3>
+          <p>Built with Vue 3 and modern JavaScript</p>
+        </div>
+        <div class="feature">
+          <h3>📦 Docker Ready</h3>
+          <p>Containerized and ready for deployment</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  name: 'HomeView',
+  data() {
+    return {
+      projectName: '{{.ProjectName}}'
+    }
+  }
+}
+</script>
+
+<style scoped>
+.home {
+  padding: 20px;
+}
+
+.hero {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 60px 20px;
+}
+
+.hero h1 {
+  font-size: 3rem;
+  color: #42b883;
+  margin-bottom: 20px;
+}
+
+.hero p {
+  font-size: 1.2rem;
+  color: #666;
+  margin-bottom: 40px;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+  margin-top: 40px;
+}
+
+.feature {
+  padding: 30px;
+  border-radius: 10px;
+  background: #f8f9fa;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.feature:hover {
+  transform: translateY(-5px);
+}
+
+.feature h3 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+}
+
+.feature p {
+  color: #666;
+  line-height: 1.6;
+}
+</style>

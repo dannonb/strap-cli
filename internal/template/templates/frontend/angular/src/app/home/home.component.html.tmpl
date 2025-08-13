@@ -1,0 +1,14 @@
+<div class="hero">
+  <div class="container">
+    <h1>{{projectName}}</h1>
+    <p>Welcome to your new microservice project!</p>
+    
+    <div class="features">
+      <div class="feature" *ngFor="let feature of features">
+        <div class="feature-icon">{{feature.icon}}</div>
+        <h3>{{feature.title}}</h3>
+        <p>{{feature.description}}</p>
+      </div>
+    </div>
+  </div>
+</div>

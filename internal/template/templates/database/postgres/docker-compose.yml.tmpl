@@ -1,0 +1,21 @@
+  postgres:
+    image: postgres:16
+    container_name: {{.ProjectName}}-postgres
+    restart: unless-stopped
+    ports:
+      - "{{.Database.Port}}:5432"
+    environment:
+      POSTGRES_DB: {{.Database.Environment.POSTGRES_DB}}
+      POSTGRES_USER: {{.Database.Environment.POSTGRES_USER}}
+      POSTGRES_PASSWORD: {{.Database.Environment.POSTGRES_PASSWORD}}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - {{.Database.Volume}}:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - {{.ProjectName}}-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{.Database.Environment.POSTGRES_USER}} -d {{.Database.Environment.POSTGRES_DB}}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

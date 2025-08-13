@@ -1,0 +1,15 @@
+  mongo:
+    image: mongo:7.0
+    container_name: {{.ProjectName}}-mongo
+    restart: unless-stopped
+    ports:
+      - "{{.Database.Port}}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: {{.Database.Environment.MONGO_INITDB_ROOT_USERNAME}}
+      MONGO_INITDB_ROOT_PASSWORD: {{.Database.Environment.MONGO_INITDB_ROOT_PASSWORD}}
+      MONGO_INITDB_DATABASE: {{.Database.Environment.MONGO_INITDB_DATABASE}}
+    volumes:
+      - {{.Database.Volume}}:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - {{.ProjectName}}-network

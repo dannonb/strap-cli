@@ -1,0 +1,98 @@
+# {{.ProjectName}} Angular Frontend
+
+An Angular frontend application for {{.ProjectName}}.
+
+## Features
+
+- Angular 16 with TypeScript
+- Angular Router for single-page application routing
+- Angular CLI for development and build tooling
+- Modern TypeScript support
+- Component-based architecture
+- Hot reload development server
+- Production-optimized builds
+- Docker support with Nginx
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- npm
+- Angular CLI (optional, but recommended)
+
+### Local Development
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Start the development server:
+```bash
+npm start
+```
+
+The application will be available at http://localhost:4200
+
+### Production Build
+
+```bash
+npm run build
+```
+
+### Docker Development
+
+1. Build the Docker image:
+```bash
+docker build -t {{.ProjectName}}-frontend .
+```
+
+2. Run the container:
+```bash
+docker run -p 80:80 {{.ProjectName}}-frontend
+```
+
+## Available Scripts
+
+- `npm start` - Start development server with hot reload
+- `npm run build` - Create production build
+- `npm run watch` - Build in watch mode for development
+- `npm test` - Run unit tests with Karma
+
+## Project Structure
+
+```
+.
+├── src/
+│   ├── app/
+│   │   ├── home/
+│   │   │   ├── home.component.ts    # Home page component
+│   │   │   ├── home.component.html  # Home page template
+│   │   │   └── home.component.css   # Home page styles
+│   │   ├── app.component.ts         # Root component
+│   │   ├── app.component.html       # Root template
+│   │   ├── app.component.css        # Root styles
+│   │   ├── app.module.ts           # Root module
+│   │   └── app-routing.module.ts   # Routing configuration
+│   ├── index.html                  # HTML template
+│   ├── main.ts                     # Application entry point
+│   └── styles.css                  # Global styles
+├── angular.json                    # Angular CLI configuration
+├── tsconfig.json                   # TypeScript configuration
+├── tsconfig.app.json              # App-specific TypeScript config
+├── tsconfig.spec.json             # Test-specific TypeScript config
+├── package.json                    # Dependencies and scripts
+├── Dockerfile                     # Docker configuration
+├── nginx.conf                     # Nginx configuration for production
+├── .gitignore                    # Git ignore rules
+└── README.md                     # This file
+```
+
+## Customization
+
+- Modify `src/app/app.component.html` to update the main application layout
+- Add new components using Angular CLI: `ng generate component component-name`
+- Create new services using Angular CLI: `ng generate service service-name`
+- Update routes in `src/app/app-routing.module.ts`
+- Configure API endpoints to connect with your backend service

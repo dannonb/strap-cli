@@ -1,0 +1,156 @@
+# MongoDB Connection Examples
+
+## Environment Variables
+```bash
+MONGO_URL=mongodb://{{.Database.Environment.MONGO_APP_USERNAME}}:{{.Database.Environment.MONGO_APP_PASSWORD}}@localhost:{{.Database.Port}}/{{.Database.Environment.MONGO_INITDB_DATABASE}}
+MONGO_HOST=localhost
+MONGO_PORT={{.Database.Port}}
+MONGO_DATABASE={{.Database.Environment.MONGO_INITDB_DATABASE}}
+MONGO_USERNAME={{.Database.Environment.MONGO_APP_USERNAME}}
+MONGO_PASSWORD={{.Database.Environment.MONGO_APP_PASSWORD}}
+```
+
+## FastAPI (Python) Connection
+```python
+from motor.motor_asyncio import AsyncIOMotorClient
+import os
+
+# Connection string
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://{{.Database.Environment.MONGO_APP_USERNAME}}:{{.Database.Environment.MONGO_APP_PASSWORD}}@localhost:{{.Database.Port}}/{{.Database.Environment.MONGO_INITDB_DATABASE}}")
+
+# Create client
+client = AsyncIOMotorClient(MONGO_URL)
+database = client.{{.Database.Environment.MONGO_INITDB_DATABASE}}
+
+# Example usage
+async def get_user(email: str):
+    return await database.users.find_one({"email": email})
+
+async def create_user(user_data: dict):
+    result = await database.users.insert_one(user_data)
+    return result.inserted_id
+```
+
+## Express.js (Node.js) Connection
+```javascript
+const { MongoClient } = require('mongodb');
+
+const MONGO_URL = process.env.MONGO_URL || 'mongodb://{{.Database.Environment.MONGO_APP_USERNAME}}:{{.Database.Environment.MONGO_APP_PASSWORD}}@localhost:{{.Database.Port}}/{{.Database.Environment.MONGO_INITDB_DATABASE}}';
+
+let client;
+let database;
+
+async function connectToMongo() {
+  try {
+    client = new MongoClient(MONGO_URL);
+    await client.connect();
+    database = client.db('{{.Database.Environment.MONGO_INITDB_DATABASE}}');
+    console.log('Connected to MongoDB');
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    process.exit(1);
+  }
+}
+
+// Example usage
+async function getUser(email) {
+  return await database.collection('users').findOne({ email });
+}
+
+async function createUser(userData) {
+  const result = await database.collection('users').insertOne(userData);
+  return result.insertedId;
+}
+
+module.exports = { connectToMongo, getUser, createUser };
+```
+
+## Gin (Go) Connection
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "os"
+    "time"
+
+    "go.mongodb.org/mongo-driver/mongo"
+    "go.mongodb.org/mongo-driver/mongo/options"
+    "go.mongodb.org/mongo-driver/bson"
+)
+
+var client *mongo.Client
+var database *mongo.Database
+
+func ConnectToMongo() {
+    mongoURL := os.Getenv("MONGO_URL")
+    if mongoURL == "" {
+        mongoURL = "mongodb://{{.Database.Environment.MONGO_APP_USERNAME}}:{{.Database.Environment.MONGO_APP_PASSWORD}}@localhost:{{.Database.Port}}/{{.Database.Environment.MONGO_INITDB_DATABASE}}"
+    }
+
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    var err error
+    client, err = mongo.Connect(ctx, options.Client().ApplyURI(mongoURL))
+    if err != nil {
+        log.Fatal("Failed to connect to MongoDB:", err)
+    }
+
+    // Ping the database
+    if err = client.Ping(ctx, nil); err != nil {
+        log.Fatal("Failed to ping MongoDB:", err)
+    }
+
+    database = client.Database("{{.Database.Environment.MONGO_INITDB_DATABASE}}")
+    log.Println("Connected to MongoDB")
+}
+
+// Example usage
+type User struct {
+    Email string `bson:"email"`
+    Name  string `bson:"name"`
+}
+
+func GetUser(email string) (*User, error) {
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+
+    var user User
+    err := database.Collection("users").FindOne(ctx, bson.M{"email": email}).Decode(&user)
+    return &user, err
+}
+
+func CreateUser(user User) (string, error) {
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+
+    result, err := database.Collection("users").InsertOne(ctx, user)
+    if err != nil {
+        return "", err
+    }
+    return result.InsertedID.(string), nil
+}
+```
+
+## Docker Compose Usage
+The MongoDB service will be available at `localhost:{{.Database.Port}}` when running with Docker Compose.
+
+## Required Dependencies
+
+### FastAPI (Python)
+```bash
+pip install motor pymongo
+```
+
+### Express.js (Node.js)
+```bash
+npm install mongodb
+```
+
+### Gin (Go)
+```bash
+go get go.mongodb.org/mongo-driver/mongo
+go get go.mongodb.org/mongo-driver/bson
+```

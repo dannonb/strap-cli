@@ -1,0 +1,83 @@
+# {{.ProjectName}} Express.js Backend
+
+An Express.js backend service for {{.ProjectName}}.
+
+## Features
+
+- Express.js framework with middleware support
+- CORS enabled for cross-origin requests
+- Security headers with Helmet
+- Request logging with Morgan
+- Health check endpoint
+- Environment-based configuration
+- Docker support
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- npm
+
+### Local Development
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Copy environment variables:
+```bash
+cp .env.example .env
+```
+
+3. Run the development server:
+```bash
+npm run dev
+```
+
+The API will be available at http://localhost:3000
+
+### Production
+
+```bash
+npm start
+```
+
+### Docker Development
+
+1. Build the Docker image:
+```bash
+docker build -t {{.ProjectName}}-backend .
+```
+
+2. Run the container:
+```bash
+docker run -p 3000:3000 {{.ProjectName}}-backend
+```
+
+## Available Endpoints
+
+- `GET /` - Welcome message
+- `GET /health` - Health check endpoint
+
+## Environment Variables
+
+See `.env.example` for all available environment variables.
+
+## Scripts
+
+- `npm start` - Start production server
+- `npm run dev` - Start development server with auto-reload
+
+## Project Structure
+
+```
+.
+├── server.js           # Application entry point
+├── package.json        # Node.js dependencies and scripts
+├── Dockerfile         # Docker configuration
+├── .env.example       # Environment variables template
+├── .gitignore        # Git ignore rules
+└── README.md         # This file
+```

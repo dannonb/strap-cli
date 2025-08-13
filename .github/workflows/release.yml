@@ -1,0 +1,235 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+env:
+  BINARY_NAME: strap
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+          - goos: windows
+            goarch: arm64
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Get build info
+      id: build_info
+      run: |
+        echo "commit=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        echo "build_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_OUTPUT
+
+    - name: Build binary
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        VERSION: ${{ steps.version.outputs.version }}
+        COMMIT: ${{ steps.build_info.outputs.commit }}
+        BUILD_DATE: ${{ steps.build_info.outputs.build_date }}
+      run: |
+        OUTPUT_NAME=${{ env.BINARY_NAME }}
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          OUTPUT_NAME="${{ env.BINARY_NAME }}.exe"
+        fi
+        
+        LDFLAGS="-ldflags \"-X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildDate=${BUILD_DATE} -s -w\""
+        
+        mkdir -p dist/${{ env.BINARY_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}
+        
+        eval "go build ${LDFLAGS} -o dist/${{ env.BINARY_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}/${OUTPUT_NAME} ./cmd"
+
+    - name: Create archive
+      run: |
+        cd dist
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          zip -r ${{ env.BINARY_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip ${{ env.BINARY_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}/
+        else
+          tar -czf ${{ env.BINARY_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz ${{ env.BINARY_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}/
+        fi
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ env.BINARY_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}
+        path: dist/${{ env.BINARY_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}.*
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Run tests
+      run: go test -v ./...
+
+    - name: Run linter
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: latest
+
+  release:
+    name: Create Release
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: dist/
+
+    - name: Organize artifacts
+      run: |
+        cd dist
+        for dir in */; do
+          if [ -d "$dir" ]; then
+            mv "$dir"* .
+            rmdir "$dir" 2>/dev/null || true
+          fi
+        done
+
+    - name: Generate checksums
+      run: |
+        cd dist
+        sha256sum *.tar.gz *.zip > checksums.txt
+
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        
+        cat > dist/RELEASE_NOTES.md << EOF
+        # Release $VERSION
+        
+        ## What's New
+        
+        <!-- Add release highlights here -->
+        
+        ## Changes
+        
+        EOF
+        
+        if [ -n "$PREVIOUS_TAG" ]; then
+          echo "### Commits since $PREVIOUS_TAG:" >> dist/RELEASE_NOTES.md
+          git log --pretty=format:"- %s (%h)" "$PREVIOUS_TAG..HEAD" >> dist/RELEASE_NOTES.md
+        else
+          echo "### All commits:" >> dist/RELEASE_NOTES.md
+          git log --pretty=format:"- %s (%h)" >> dist/RELEASE_NOTES.md
+        fi
+        
+        cat >> dist/RELEASE_NOTES.md << EOF
+        
+        ## Installation
+        
+        ### Download Pre-built Binaries
+        
+        Choose the appropriate binary for your platform:
+        
+        - **Linux (x64)**: \`${{ env.BINARY_NAME }}-linux-amd64.tar.gz\`
+        - **Linux (ARM64)**: \`${{ env.BINARY_NAME }}-linux-arm64.tar.gz\`
+        - **macOS (Intel)**: \`${{ env.BINARY_NAME }}-darwin-amd64.tar.gz\`
+        - **macOS (Apple Silicon)**: \`${{ env.BINARY_NAME }}-darwin-arm64.tar.gz\`
+        - **Windows (x64)**: \`${{ env.BINARY_NAME }}-windows-amd64.zip\`
+        - **Windows (ARM64)**: \`${{ env.BINARY_NAME }}-windows-arm64.zip\`
+        
+        ### Verification
+        
+        Verify the download with the provided checksums:
+        
+        \`\`\`bash
+        # Download checksums
+        curl -L https://github.com/\${{ github.repository }}/releases/download/$VERSION/checksums.txt
+        
+        # Verify (Linux/macOS)
+        sha256sum -c checksums.txt
+        
+        # Verify (Windows)
+        certutil -hashfile ${{ env.BINARY_NAME }}-windows-amd64.zip SHA256
+        \`\`\`
+        
+        ### Installation
+        
+        See [INSTALL.md](INSTALL.md) for detailed installation instructions.
+        
+        ## Full Changelog
+        
+        **Full Changelog**: https://github.com/\${{ github.repository }}/compare/$PREVIOUS_TAG...$VERSION
+        EOF
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: Release ${{ steps.version.outputs.version }}
+        body_path: dist/RELEASE_NOTES.md
+        files: |
+          dist/*.tar.gz
+          dist/*.zip
+          dist/checksums.txt
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

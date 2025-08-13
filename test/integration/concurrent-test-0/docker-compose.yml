@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: concurrent-test-0-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      NODE_ENV: development
+      PORT: 8000
+      PYTHONPATH: /app
+      UVICORN_HOST: 0.0.0.0
+      UVICORN_PORT: 8000
+    networks:
+      - concurrent-test-0-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+networks:
+  concurrent-test-0-network:
+    driver: bridge
+    name: concurrent-test-0-network
+
+volumes:

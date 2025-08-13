@@ -1,0 +1,244 @@
+# PostgreSQL Connection Examples
+
+## Environment Variables
+```bash
+DATABASE_URL=postgresql://{{.Database.Environment.POSTGRES_APP_USER}}:{{.Database.Environment.POSTGRES_APP_PASSWORD}}@localhost:{{.Database.Port}}/{{.Database.Environment.POSTGRES_DB}}
+POSTGRES_HOST=localhost
+POSTGRES_PORT={{.Database.Port}}
+POSTGRES_DB={{.Database.Environment.POSTGRES_DB}}
+POSTGRES_USER={{.Database.Environment.POSTGRES_APP_USER}}
+POSTGRES_PASSWORD={{.Database.Environment.POSTGRES_APP_PASSWORD}}
+```
+
+## FastAPI (Python) Connection
+```python
+import asyncpg
+import os
+from typing import Optional
+
+# Connection string
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://{{.Database.Environment.POSTGRES_APP_USER}}:{{.Database.Environment.POSTGRES_APP_PASSWORD}}@localhost:{{.Database.Port}}/{{.Database.Environment.POSTGRES_DB}}")
+
+# Connection pool
+pool = None
+
+async def init_db():
+    global pool
+    pool = await asyncpg.create_pool(DATABASE_URL)
+
+async def close_db():
+    global pool
+    if pool:
+        await pool.close()
+
+# Example usage
+async def get_user(email: str) -> Optional[dict]:
+    async with pool.acquire() as connection:
+        row = await connection.fetchrow(
+            "SELECT id, email, name, created_at FROM users WHERE email = $1", 
+            email
+        )
+        return dict(row) if row else None
+
+async def create_user(email: str, name: str) -> int:
+    async with pool.acquire() as connection:
+        user_id = await connection.fetchval(
+            "INSERT INTO users (email, name) VALUES ($1, $2) RETURNING id",
+            email, name
+        )
+        return user_id
+
+# Alternative using SQLAlchemy
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+
+engine = create_async_engine(DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"))
+AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+async def get_db():
+    async with AsyncSessionLocal() as session:
+        yield session
+```
+
+## Express.js (Node.js) Connection
+```javascript
+const { Pool } = require('pg');
+
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://{{.Database.Environment.POSTGRES_APP_USER}}:{{.Database.Environment.POSTGRES_APP_PASSWORD}}@localhost:{{.Database.Port}}/{{.Database.Environment.POSTGRES_DB}}';
+
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+// Test connection
+pool.on('connect', () => {
+  console.log('Connected to PostgreSQL');
+});
+
+pool.on('error', (err) => {
+  console.error('PostgreSQL connection error:', err);
+  process.exit(-1);
+});
+
+// Example usage
+async function getUser(email) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'SELECT id, email, name, created_at FROM users WHERE email = $1',
+      [email]
+    );
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
+async function createUser(email, name) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'INSERT INTO users (email, name) VALUES ($1, $2) RETURNING id',
+      [email, name]
+    );
+    return result.rows[0].id;
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = { pool, getUser, createUser };
+```
+
+## Gin (Go) Connection
+```go
+package main
+
+import (
+    "database/sql"
+    "fmt"
+    "log"
+    "os"
+    "time"
+
+    _ "github.com/lib/pq"
+)
+
+var db *sql.DB
+
+func ConnectToPostgres() {
+    databaseURL := os.Getenv("DATABASE_URL")
+    if databaseURL == "" {
+        databaseURL = "postgresql://{{.Database.Environment.POSTGRES_APP_USER}}:{{.Database.Environment.POSTGRES_APP_PASSWORD}}@localhost:{{.Database.Port}}/{{.Database.Environment.POSTGRES_DB}}?sslmode=disable"
+    }
+
+    var err error
+    db, err = sql.Open("postgres", databaseURL)
+    if err != nil {
+        log.Fatal("Failed to connect to PostgreSQL:", err)
+    }
+
+    // Configure connection pool
+    db.SetMaxOpenConns(25)
+    db.SetMaxIdleConns(25)
+    db.SetConnMaxLifetime(5 * time.Minute)
+
+    // Test connection
+    if err = db.Ping(); err != nil {
+        log.Fatal("Failed to ping PostgreSQL:", err)
+    }
+
+    log.Println("Connected to PostgreSQL")
+}
+
+// Example usage
+type User struct {
+    ID        int       `json:"id"`
+    Email     string    `json:"email"`
+    Name      string    `json:"name"`
+    CreatedAt time.Time `json:"created_at"`
+}
+
+func GetUser(email string) (*User, error) {
+    var user User
+    err := db.QueryRow(
+        "SELECT id, email, name, created_at FROM users WHERE email = $1",
+        email,
+    ).Scan(&user.ID, &user.Email, &user.Name, &user.CreatedAt)
+    
+    if err == sql.ErrNoRows {
+        return nil, nil
+    }
+    if err != nil {
+        return nil, err
+    }
+    
+    return &user, nil
+}
+
+func CreateUser(email, name string) (int, error) {
+    var userID int
+    err := db.QueryRow(
+        "INSERT INTO users (email, name) VALUES ($1, $2) RETURNING id",
+        email, name,
+    ).Scan(&userID)
+    
+    return userID, err
+}
+
+// Alternative using GORM
+import (
+    "gorm.io/driver/postgres"
+    "gorm.io/gorm"
+)
+
+var gormDB *gorm.DB
+
+func ConnectWithGORM() {
+    databaseURL := os.Getenv("DATABASE_URL")
+    if databaseURL == "" {
+        databaseURL = "postgresql://{{.Database.Environment.POSTGRES_APP_USER}}:{{.Database.Environment.POSTGRES_APP_PASSWORD}}@localhost:{{.Database.Port}}/{{.Database.Environment.POSTGRES_DB}}?sslmode=disable"
+    }
+
+    var err error
+    gormDB, err = gorm.Open(postgres.Open(databaseURL), &gorm.Config{})
+    if err != nil {
+        log.Fatal("Failed to connect to PostgreSQL with GORM:", err)
+    }
+
+    log.Println("Connected to PostgreSQL with GORM")
+}
+```
+
+## Docker Compose Usage
+The PostgreSQL service will be available at `localhost:{{.Database.Port}}` when running with Docker Compose.
+
+## Required Dependencies
+
+### FastAPI (Python)
+```bash
+pip install asyncpg sqlalchemy[asyncio]
+```
+
+### Express.js (Node.js)
+```bash
+npm install pg
+npm install --save-dev @types/pg  # for TypeScript
+```
+
+### Gin (Go)
+```bash
+go get github.com/lib/pq
+# or for GORM
+go get gorm.io/driver/postgres
+go get gorm.io/gorm
+```
+
+## Database Management
+You can connect to the database using any PostgreSQL client:
+```bash
+psql -h localhost -p {{.Database.Port}} -U {{.Database.Environment.POSTGRES_APP_USER}} -d {{.Database.Environment.POSTGRES_DB}}
+```

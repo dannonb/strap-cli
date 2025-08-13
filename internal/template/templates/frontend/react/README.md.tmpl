@@ -1,0 +1,84 @@
+# {{.ProjectName}} React Frontend
+
+A React frontend application for {{.ProjectName}}.
+
+## Features
+
+- React 18 with functional components and hooks
+- Create React App for development and build tooling
+- Modern JavaScript (ES6+) support
+- CSS modules support
+- Hot reload development server
+- Production-optimized builds
+- Docker support with Nginx
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- npm
+
+### Local Development
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Start the development server:
+```bash
+npm start
+```
+
+The application will be available at http://localhost:3000
+
+### Production Build
+
+```bash
+npm run build
+```
+
+### Docker Development
+
+1. Build the Docker image:
+```bash
+docker build -t {{.ProjectName}}-frontend .
+```
+
+2. Run the container:
+```bash
+docker run -p 80:80 {{.ProjectName}}-frontend
+```
+
+## Available Scripts
+
+- `npm start` - Start development server with hot reload
+- `npm run build` - Create production build
+- `npm test` - Run tests in interactive watch mode
+- `npm run eject` - Eject from Create React App (one-way operation)
+
+## Project Structure
+
+```
+.
+├── public/
+│   ├── index.html      # HTML template
+│   └── favicon.ico     # App icon
+├── src/
+│   ├── App.js          # Main App component
+│   ├── App.css         # App styles
+│   └── index.js        # Application entry point
+├── package.json        # Dependencies and scripts
+├── Dockerfile         # Docker configuration
+├── nginx.conf         # Nginx configuration for production
+├── .gitignore        # Git ignore rules
+└── README.md         # This file
+```
+
+## Customization
+
+- Modify `src/App.js` to add your components
+- Add new components in the `src/components/` directory
+- Update styles in `src/App.css` or create component-specific CSS files
+- Configure API endpoints to connect with your backend service

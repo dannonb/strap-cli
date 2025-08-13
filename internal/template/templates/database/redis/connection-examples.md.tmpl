@@ -1,0 +1,365 @@
+# Redis Connection Examples
+
+## Environment Variables
+```bash
+REDIS_URL=redis://:{{.Database.Environment.REDIS_PASSWORD}}@localhost:{{.Database.Port}}/0
+REDIS_HOST=localhost
+REDIS_PORT={{.Database.Port}}
+REDIS_PASSWORD={{.Database.Environment.REDIS_PASSWORD}}
+REDIS_DB=0
+```
+
+## FastAPI (Python) Connection
+```python
+import aioredis
+import os
+from typing import Optional, Any
+
+# Connection parameters
+REDIS_URL = os.getenv("REDIS_URL", "redis://:{{.Database.Environment.REDIS_PASSWORD}}@localhost:{{.Database.Port}}/0")
+
+# Connection pool
+redis_pool = None
+
+async def init_redis():
+    global redis_pool
+    redis_pool = aioredis.ConnectionPool.from_url(
+        REDIS_URL,
+        max_connections=20,
+        retry_on_timeout=True
+    )
+
+async def close_redis():
+    global redis_pool
+    if redis_pool:
+        await redis_pool.disconnect()
+
+async def get_redis():
+    return aioredis.Redis(connection_pool=redis_pool)
+
+# Example usage
+async def set_cache(key: str, value: Any, expire: int = 3600) -> bool:
+    redis = await get_redis()
+    try:
+        await redis.setex(key, expire, str(value))
+        return True
+    except Exception as e:
+        print(f"Redis set error: {e}")
+        return False
+
+async def get_cache(key: str) -> Optional[str]:
+    redis = await get_redis()
+    try:
+        value = await redis.get(key)
+        return value.decode('utf-8') if value else None
+    except Exception as e:
+        print(f"Redis get error: {e}")
+        return None
+
+async def delete_cache(key: str) -> bool:
+    redis = await get_redis()
+    try:
+        result = await redis.delete(key)
+        return result > 0
+    except Exception as e:
+        print(f"Redis delete error: {e}")
+        return False
+
+# Session management example
+async def set_session(session_id: str, user_data: dict, expire: int = 86400):
+    redis = await get_redis()
+    await redis.hset(f"session:{session_id}", mapping=user_data)
+    await redis.expire(f"session:{session_id}", expire)
+
+async def get_session(session_id: str) -> Optional[dict]:
+    redis = await get_redis()
+    session_data = await redis.hgetall(f"session:{session_id}")
+    return {k.decode(): v.decode() for k, v in session_data.items()} if session_data else None
+```
+
+## Express.js (Node.js) Connection
+```javascript
+const redis = require('redis');
+
+const REDIS_URL = process.env.REDIS_URL || 'redis://:{{.Database.Environment.REDIS_PASSWORD}}@localhost:{{.Database.Port}}/0';
+
+const client = redis.createClient({
+  url: REDIS_URL,
+  retry_strategy: (options) => {
+    if (options.error && options.error.code === 'ECONNREFUSED') {
+      return new Error('The server refused the connection');
+    }
+    if (options.total_retry_time > 1000 * 60 * 60) {
+      return new Error('Retry time exhausted');
+    }
+    if (options.attempt > 10) {
+      return undefined;
+    }
+    return Math.min(options.attempt * 100, 3000);
+  }
+});
+
+client.on('connect', () => {
+  console.log('Connected to Redis');
+});
+
+client.on('error', (err) => {
+  console.error('Redis connection error:', err);
+});
+
+// Connect to Redis
+client.connect();
+
+// Example usage
+async function setCache(key, value, expire = 3600) {
+  try {
+    await client.setEx(key, expire, JSON.stringify(value));
+    return true;
+  } catch (error) {
+    console.error('Redis set error:', error);
+    return false;
+  }
+}
+
+async function getCache(key) {
+  try {
+    const value = await client.get(key);
+    return value ? JSON.parse(value) : null;
+  } catch (error) {
+    console.error('Redis get error:', error);
+    return null;
+  }
+}
+
+async function deleteCache(key) {
+  try {
+    const result = await client.del(key);
+    return result > 0;
+  } catch (error) {
+    console.error('Redis delete error:', error);
+    return false;
+  }
+}
+
+// Session management example
+async function setSession(sessionId, userData, expire = 86400) {
+  try {
+    await client.hSet(`session:${sessionId}`, userData);
+    await client.expire(`session:${sessionId}`, expire);
+    return true;
+  } catch (error) {
+    console.error('Redis session set error:', error);
+    return false;
+  }
+}
+
+async function getSession(sessionId) {
+  try {
+    const sessionData = await client.hGetAll(`session:${sessionId}`);
+    return Object.keys(sessionData).length > 0 ? sessionData : null;
+  } catch (error) {
+    console.error('Redis session get error:', error);
+    return null;
+  }
+}
+
+module.exports = { client, setCache, getCache, deleteCache, setSession, getSession };
+```
+
+## Gin (Go) Connection
+```go
+package main
+
+import (
+    "context"
+    "encoding/json"
+    "fmt"
+    "log"
+    "os"
+    "time"
+
+    "github.com/go-redis/redis/v8"
+)
+
+var rdb *redis.Client
+var ctx = context.Background()
+
+func ConnectToRedis() {
+    redisURL := os.Getenv("REDIS_URL")
+    
+    var opt *redis.Options
+    var err error
+    
+    if redisURL != "" {
+        opt, err = redis.ParseURL(redisURL)
+        if err != nil {
+            log.Fatal("Failed to parse Redis URL:", err)
+        }
+    } else {
+        opt = &redis.Options{
+            Addr:     fmt.Sprintf("%s:%s", 
+                os.Getenv("REDIS_HOST"), 
+                os.Getenv("REDIS_PORT")),
+            Password: os.Getenv("REDIS_PASSWORD"),
+            DB:       0,
+        }
+        
+        if opt.Addr == ":" {
+            opt.Addr = "localhost:{{.Database.Port}}"
+        }
+        if opt.Password == "" {
+            opt.Password = "{{.Database.Environment.REDIS_PASSWORD}}"
+        }
+    }
+
+    rdb = redis.NewClient(opt)
+
+    // Test connection
+    _, err = rdb.Ping(ctx).Result()
+    if err != nil {
+        log.Fatal("Failed to connect to Redis:", err)
+    }
+
+    log.Println("Connected to Redis")
+}
+
+// Example usage
+func SetCache(key string, value interface{}, expire time.Duration) error {
+    jsonValue, err := json.Marshal(value)
+    if err != nil {
+        return err
+    }
+    
+    return rdb.Set(ctx, key, jsonValue, expire).Err()
+}
+
+func GetCache(key string, dest interface{}) error {
+    value, err := rdb.Get(ctx, key).Result()
+    if err != nil {
+        return err
+    }
+    
+    return json.Unmarshal([]byte(value), dest)
+}
+
+func DeleteCache(key string) error {
+    return rdb.Del(ctx, key).Err()
+}
+
+// Session management example
+func SetSession(sessionID string, userData map[string]interface{}, expire time.Duration) error {
+    pipe := rdb.Pipeline()
+    
+    for field, value := range userData {
+        jsonValue, err := json.Marshal(value)
+        if err != nil {
+            return err
+        }
+        pipe.HSet(ctx, fmt.Sprintf("session:%s", sessionID), field, jsonValue)
+    }
+    
+    pipe.Expire(ctx, fmt.Sprintf("session:%s", sessionID), expire)
+    
+    _, err := pipe.Exec(ctx)
+    return err
+}
+
+func GetSession(sessionID string) (map[string]interface{}, error) {
+    sessionData, err := rdb.HGetAll(ctx, fmt.Sprintf("session:%s", sessionID)).Result()
+    if err != nil {
+        return nil, err
+    }
+    
+    if len(sessionData) == 0 {
+        return nil, redis.Nil
+    }
+    
+    result := make(map[string]interface{})
+    for field, value := range sessionData {
+        var parsedValue interface{}
+        if err := json.Unmarshal([]byte(value), &parsedValue); err != nil {
+            result[field] = value // fallback to string if JSON parsing fails
+        } else {
+            result[field] = parsedValue
+        }
+    }
+    
+    return result, nil
+}
+
+// Pub/Sub example
+func PublishMessage(channel string, message interface{}) error {
+    jsonMessage, err := json.Marshal(message)
+    if err != nil {
+        return err
+    }
+    
+    return rdb.Publish(ctx, channel, jsonMessage).Err()
+}
+
+func SubscribeToChannel(channel string, handler func(string)) {
+    pubsub := rdb.Subscribe(ctx, channel)
+    defer pubsub.Close()
+    
+    ch := pubsub.Channel()
+    
+    for msg := range ch {
+        handler(msg.Payload)
+    }
+}
+```
+
+## Docker Compose Usage
+The Redis service will be available at `localhost:{{.Database.Port}}` when running with Docker Compose.
+
+## Required Dependencies
+
+### FastAPI (Python)
+```bash
+pip install aioredis
+```
+
+### Express.js (Node.js)
+```bash
+npm install redis
+```
+
+### Gin (Go)
+```bash
+go get github.com/go-redis/redis/v8
+```
+
+## Redis CLI Access
+You can connect to Redis using the CLI:
+```bash
+redis-cli -h localhost -p {{.Database.Port}} -a {{.Database.Environment.REDIS_PASSWORD}}
+```
+
+## Common Use Cases
+
+### Caching
+- Store frequently accessed data
+- Cache API responses
+- Session storage
+
+### Pub/Sub
+- Real-time messaging
+- Event notifications
+- Microservice communication
+
+### Rate Limiting
+- API rate limiting
+- User action throttling
+- Request counting
+
+### Queues
+- Background job processing
+- Task queues
+- Message queues
+
+## Performance Tips
+- Use connection pooling for better performance
+- Set appropriate expiration times for cached data
+- Use Redis pipelines for bulk operations
+- Monitor memory usage and configure eviction policies
+- Use Redis Cluster for high availability and scaling

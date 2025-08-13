@@ -1,0 +1,28 @@
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-home',
+  templateUrl: './home.component.html',
+  styleUrls: ['./home.component.css']
+})
+export class HomeComponent {
+  projectName = '{{.ProjectName}}';
+  
+  features = [
+    {
+      icon: '🚀',
+      title: 'Fast Development',
+      description: 'Get started quickly with pre-configured templates'
+    },
+    {
+      icon: '🔧',
+      title: 'Modern Stack',
+      description: 'Built with Angular and modern TypeScript'
+    },
+    {
+      icon: '📦',
+      title: 'Docker Ready',
+      description: 'Containerized and ready for deployment'
+    }
+  ];
+}

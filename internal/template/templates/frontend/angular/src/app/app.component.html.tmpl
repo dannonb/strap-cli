@@ -1,0 +1,12 @@
+<nav class="navbar">
+  <div class="container">
+    <h1 class="logo">{{title}}</h1>
+    <ul class="nav-links">
+      <li><a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Home</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <router-outlet></router-outlet>
+</main>

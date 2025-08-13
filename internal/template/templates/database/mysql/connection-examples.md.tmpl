@@ -1,0 +1,288 @@
+# MySQL Connection Examples
+
+## Environment Variables
+```bash
+DATABASE_URL=mysql://{{.Database.Environment.MYSQL_USER}}:{{.Database.Environment.MYSQL_PASSWORD}}@localhost:{{.Database.Port}}/{{.Database.Environment.MYSQL_DATABASE}}
+MYSQL_HOST=localhost
+MYSQL_PORT={{.Database.Port}}
+MYSQL_DATABASE={{.Database.Environment.MYSQL_DATABASE}}
+MYSQL_USER={{.Database.Environment.MYSQL_USER}}
+MYSQL_PASSWORD={{.Database.Environment.MYSQL_PASSWORD}}
+```
+
+## FastAPI (Python) Connection
+```python
+import aiomysql
+import os
+from typing import Optional
+
+# Connection parameters
+MYSQL_CONFIG = {
+    'host': os.getenv('MYSQL_HOST', 'localhost'),
+    'port': int(os.getenv('MYSQL_PORT', '{{.Database.Port}}')),
+    'user': os.getenv('MYSQL_USER', '{{.Database.Environment.MYSQL_USER}}'),
+    'password': os.getenv('MYSQL_PASSWORD', '{{.Database.Environment.MYSQL_PASSWORD}}'),
+    'db': os.getenv('MYSQL_DATABASE', '{{.Database.Environment.MYSQL_DATABASE}}'),
+    'charset': 'utf8mb4',
+    'autocommit': True
+}
+
+# Connection pool
+pool = None
+
+async def init_db():
+    global pool
+    pool = await aiomysql.create_pool(**MYSQL_CONFIG, maxsize=10)
+
+async def close_db():
+    global pool
+    if pool:
+        pool.close()
+        await pool.wait_closed()
+
+# Example usage
+async def get_user(email: str) -> Optional[dict]:
+    async with pool.acquire() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cursor:
+            await cursor.execute(
+                "SELECT id, email, name, created_at FROM users WHERE email = %s", 
+                (email,)
+            )
+            result = await cursor.fetchone()
+            return result
+
+async def create_user(email: str, name: str) -> int:
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cursor:
+            await cursor.execute(
+                "INSERT INTO users (email, name) VALUES (%s, %s)",
+                (email, name)
+            )
+            return cursor.lastrowid
+
+# Alternative using SQLAlchemy
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+
+DATABASE_URL = f"mysql+aiomysql://{MYSQL_CONFIG['user']}:{MYSQL_CONFIG['password']}@{MYSQL_CONFIG['host']}:{MYSQL_CONFIG['port']}/{MYSQL_CONFIG['db']}"
+engine = create_async_engine(DATABASE_URL)
+AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+async def get_db():
+    async with AsyncSessionLocal() as session:
+        yield session
+```
+
+## Express.js (Node.js) Connection
+```javascript
+const mysql = require('mysql2/promise');
+
+const dbConfig = {
+  host: process.env.MYSQL_HOST || 'localhost',
+  port: process.env.MYSQL_PORT || {{.Database.Port}},
+  user: process.env.MYSQL_USER || '{{.Database.Environment.MYSQL_USER}}',
+  password: process.env.MYSQL_PASSWORD || '{{.Database.Environment.MYSQL_PASSWORD}}',
+  database: process.env.MYSQL_DATABASE || '{{.Database.Environment.MYSQL_DATABASE}}',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  charset: 'utf8mb4'
+};
+
+const pool = mysql.createPool(dbConfig);
+
+// Test connection
+pool.getConnection()
+  .then(connection => {
+    console.log('Connected to MySQL');
+    connection.release();
+  })
+  .catch(err => {
+    console.error('MySQL connection error:', err);
+    process.exit(-1);
+  });
+
+// Example usage
+async function getUser(email) {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT id, email, name, created_at FROM users WHERE email = ?',
+      [email]
+    );
+    return rows[0] || null;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function createUser(email, name) {
+  try {
+    const [result] = await pool.execute(
+      'INSERT INTO users (email, name) VALUES (?, ?)',
+      [email, name]
+    );
+    return result.insertId;
+  } catch (error) {
+    throw error;
+  }
+}
+
+module.exports = { pool, getUser, createUser };
+```
+
+## Gin (Go) Connection
+```go
+package main
+
+import (
+    "database/sql"
+    "fmt"
+    "log"
+    "os"
+    "time"
+
+    _ "github.com/go-sql-driver/mysql"
+)
+
+var db *sql.DB
+
+func ConnectToMySQL() {
+    host := os.Getenv("MYSQL_HOST")
+    if host == "" {
+        host = "localhost"
+    }
+    
+    port := os.Getenv("MYSQL_PORT")
+    if port == "" {
+        port = "{{.Database.Port}}"
+    }
+    
+    user := os.Getenv("MYSQL_USER")
+    if user == "" {
+        user = "{{.Database.Environment.MYSQL_USER}}"
+    }
+    
+    password := os.Getenv("MYSQL_PASSWORD")
+    if password == "" {
+        password = "{{.Database.Environment.MYSQL_PASSWORD}}"
+    }
+    
+    database := os.Getenv("MYSQL_DATABASE")
+    if database == "" {
+        database = "{{.Database.Environment.MYSQL_DATABASE}}"
+    }
+
+    dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+        user, password, host, port, database)
+
+    var err error
+    db, err = sql.Open("mysql", dsn)
+    if err != nil {
+        log.Fatal("Failed to connect to MySQL:", err)
+    }
+
+    // Configure connection pool
+    db.SetMaxOpenConns(25)
+    db.SetMaxIdleConns(25)
+    db.SetConnMaxLifetime(5 * time.Minute)
+
+    // Test connection
+    if err = db.Ping(); err != nil {
+        log.Fatal("Failed to ping MySQL:", err)
+    }
+
+    log.Println("Connected to MySQL")
+}
+
+// Example usage
+type User struct {
+    ID        int       `json:"id"`
+    Email     string    `json:"email"`
+    Name      string    `json:"name"`
+    CreatedAt time.Time `json:"created_at"`
+}
+
+func GetUser(email string) (*User, error) {
+    var user User
+    err := db.QueryRow(
+        "SELECT id, email, name, created_at FROM users WHERE email = ?",
+        email,
+    ).Scan(&user.ID, &user.Email, &user.Name, &user.CreatedAt)
+    
+    if err == sql.ErrNoRows {
+        return nil, nil
+    }
+    if err != nil {
+        return nil, err
+    }
+    
+    return &user, nil
+}
+
+func CreateUser(email, name string) (int64, error) {
+    result, err := db.Exec(
+        "INSERT INTO users (email, name) VALUES (?, ?)",
+        email, name,
+    )
+    if err != nil {
+        return 0, err
+    }
+    
+    return result.LastInsertId()
+}
+
+// Alternative using GORM
+import (
+    "gorm.io/driver/mysql"
+    "gorm.io/gorm"
+)
+
+var gormDB *gorm.DB
+
+func ConnectWithGORM() {
+    dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+        user, password, host, port, database)
+
+    var err error
+    gormDB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+    if err != nil {
+        log.Fatal("Failed to connect to MySQL with GORM:", err)
+    }
+
+    log.Println("Connected to MySQL with GORM")
+}
+```
+
+## Docker Compose Usage
+The MySQL service will be available at `localhost:{{.Database.Port}}` when running with Docker Compose.
+
+## Required Dependencies
+
+### FastAPI (Python)
+```bash
+pip install aiomysql sqlalchemy[asyncio]
+```
+
+### Express.js (Node.js)
+```bash
+npm install mysql2
+```
+
+### Gin (Go)
+```bash
+go get github.com/go-sql-driver/mysql
+# or for GORM
+go get gorm.io/driver/mysql
+go get gorm.io/gorm
+```
+
+## Database Management
+You can connect to the database using any MySQL client:
+```bash
+mysql -h localhost -P {{.Database.Port}} -u {{.Database.Environment.MYSQL_USER}} -p{{.Database.Environment.MYSQL_PASSWORD}} {{.Database.Environment.MYSQL_DATABASE}}
+```
+
+## Important Notes
+- MySQL 8.0 uses `caching_sha2_password` by default, but the container is configured to use `mysql_native_password` for better compatibility
+- The `charset=utf8mb4` setting ensures proper Unicode support
+- Connection pooling is recommended for production applications

@@ -1,0 +1,23 @@
+// MongoDB initialization script
+// This script runs when the container starts for the first time
+
+// Switch to the application database
+db = db.getSiblingDB('{{.Database.Environment.MONGO_INITDB_DATABASE}}');
+
+// Create application user with read/write permissions
+db.createUser({
+  user: '{{.Database.Environment.MONGO_APP_USERNAME}}',
+  pwd: '{{.Database.Environment.MONGO_APP_PASSWORD}}',
+  roles: [
+    {
+      role: 'readWrite',
+      db: '{{.Database.Environment.MONGO_INITDB_DATABASE}}'
+    }
+  ]
+});
+
+// Create sample collection with index
+db.createCollection('users');
+db.users.createIndex({ "email": 1 }, { unique: true });
+
+print('MongoDB initialization completed successfully');
