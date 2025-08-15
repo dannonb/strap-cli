@@ -34,17 +34,21 @@ and Docker orchestration based on simple command-line flags.
 
 Use 'strap create --help' for detailed usage examples and options.`,
 	Example: `  # Full-stack project with FastAPI, React, and PostgreSQL
-  strap create --be=fastapi --fe=react --db=postgres --name=my-app
+  mkdir my-app && cd my-app
+  strap create --be=fastapi --fe=react --db=postgres
 
-  # Backend API with Gin and Redis cache
+  # Backend API with Gin and Redis cache (explicit name)
   strap create --be=gin --db=redis --name=api-service
 
-  # Frontend-only React application
-  strap create --fe=react --name=my-frontend
+  # Frontend-only React application (uses directory name)
+  mkdir my-frontend && cd my-frontend
+  strap create --fe=react
 
   # Multiple services (run in separate directories)
-  strap create --be=fastapi --db=postgres --name=user-service
-  strap create --be=gin --db=redis --name=auth-service`,
+  mkdir user-service && cd user-service
+  strap create --be=fastapi --db=postgres
+  cd ../auth-service && mkdir auth-service
+  strap create --be=gin --db=redis`,
 }
 
 var versionCmd = &cobra.Command{
@@ -82,50 +86,64 @@ var examplesCmd = &cobra.Command{
 	Long: `Common usage examples for different development scenarios.
 
 🌐 FULL-STACK APPLICATIONS:
-  # Modern web app with Python backend
-  strap create --be=fastapi --fe=react --db=postgres --name=webapp
+  # Modern web app with Python backend (uses directory name)
+  mkdir webapp && cd webapp
+  strap create --be=fastapi --fe=react --db=postgres
 
-  # Node.js API with Vue.js frontend
+  # Node.js API with Vue.js frontend (explicit name)
   strap create --be=express --fe=vue --db=mongo --name=fullstack
 
-  # Go backend with Angular frontend
-  strap create --be=gin --fe=angular --db=mysql --name=enterprise
+  # Go backend with Angular frontend (uses directory name)
+  mkdir enterprise && cd enterprise
+  strap create --be=gin --fe=angular --db=mysql
 
 🔌 API SERVICES:
-  # REST API with caching
+  # REST API with caching (explicit name)
   strap create --be=fastapi --db=redis --name=api-service
 
-  # GraphQL API with database
-  strap create --be=express --db=postgres --name=graphql-api
+  # GraphQL API with database (uses directory name)
+  mkdir graphql-api && cd graphql-api
+  strap create --be=express --db=postgres
 
-  # High-performance Go API
-  strap create --be=gin --db=mongo --name=fast-api
+  # High-performance Go API (uses directory name)
+  mkdir fast-api && cd fast-api
+  strap create --be=gin --db=mongo
 
 🎨 FRONTEND APPLICATIONS:
-  # React SPA
-  strap create --fe=react --name=react-app
+  # React SPA (uses directory name)
+  mkdir react-app && cd react-app
+  strap create --fe=react
 
-  # Vue.js application
-  strap create --fe=vue --name=vue-app
+  # Vue.js application (uses directory name)
+  mkdir vue-app && cd vue-app
+  strap create --fe=vue
 
-  # Angular enterprise app
-  strap create --fe=angular --name=angular-app
+  # Angular enterprise app (uses directory name)
+  mkdir angular-app && cd angular-app
+  strap create --fe=angular
 
 🏗️ MICROSERVICES ARCHITECTURE:
   # Create multiple services in separate directories
   mkdir microservices && cd microservices
   
-  # User management service
-  strap create --be=fastapi --db=postgres --name=user-service
+  # User management service (uses directory name)
+  mkdir user-service && cd user-service
+  strap create --be=fastapi --db=postgres
   
-  # Authentication service
-  strap create --be=gin --db=redis --name=auth-service
+  # Authentication service (uses directory name)
+  cd ../
+  mkdir auth-service && cd auth-service
+  strap create --be=gin --db=redis
   
-  # Notification service
-  strap create --be=express --db=mongo --name=notification-service
+  # Notification service (uses directory name)
+  cd ../
+  mkdir notification-service && cd notification-service
+  strap create --be=express --db=mongo
   
-  # Web client
-  strap create --fe=react --name=web-client`,
+  # Web client (uses directory name)
+  cd ../
+  mkdir web-client && cd web-client
+  strap create --fe=react`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},
@@ -137,11 +155,11 @@ var workflowsCmd = &cobra.Command{
 	Long: `Development workflow guides for different scenarios.
 
 🚀 QUICK START WORKFLOW:
-  1. Create your project:
-     strap create --be=fastapi --fe=react --db=postgres --name=myapp
+  1. Create and navigate to your project directory:
+     mkdir myapp && cd myapp
 
-  2. Navigate to project directory:
-     cd myapp
+  2. Create your project (uses directory name):
+     strap create --be=fastapi --fe=react --db=postgres
 
   3. Start all services:
      docker-compose up

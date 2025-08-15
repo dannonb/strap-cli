@@ -18,7 +18,8 @@ func TestGenerateProjectDocumentation(t *testing.T) {
 	// Change to temp directory
 	os.Chdir(tempDir)
 
-	generator := NewGenerator()
+	// Create a generator that skips Docker prerequisite checks for testing
+	generator := NewGeneratorForTesting()
 
 	testConfig := interfaces.CLIConfig{
 		ProjectName: "test-microservice",
@@ -131,7 +132,7 @@ func TestGenerateProjectDocumentationBackendOnly(t *testing.T) {
 	// Change to temp directory
 	os.Chdir(tempDir)
 
-	generator := NewGenerator()
+	generator := NewGeneratorForTesting()
 
 	testConfig := interfaces.CLIConfig{
 		ProjectName: "api-service",
@@ -174,3 +175,70 @@ func TestGenerateProjectDocumentationBackendOnly(t *testing.T) {
 	}
 }
 
+func TestGenerator_CheckPrerequisitesWithLevel(t *testing.T) {
+	generator := NewGenerator()
+
+	tests := []struct {
+		name  string
+		level interfaces.PrerequisiteLevel
+	}{
+		{
+			name:  "generation prerequisites",
+			level: interfaces.PrerequisiteGeneration,
+		},
+		{
+			name:  "execution prerequisites", 
+			level: interfaces.PrerequisiteExecution,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := generator.CheckPrerequisitesWithLevel(tt.level)
+			
+			// We don't assert on the result since Docker may not be available in test environment
+			// We're just testing that the method exists and runs without panicking
+			_ = err
+		})
+	}
+}
+
+func TestGenerator_CheckPrerequisitesWithLevel_SkipPrerequisites(t *testing.T) {
+	generator := NewGeneratorForTesting() // This skips prerequisites
+
+	tests := []struct {
+		name  string
+		level interfaces.PrerequisiteLevel
+	}{
+		{
+			name:  "generation prerequisites with skip",
+			level: interfaces.PrerequisiteGeneration,
+		},
+		{
+			name:  "execution prerequisites with skip",
+			level: interfaces.PrerequisiteExecution,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := generator.CheckPrerequisitesWithLevel(tt.level)
+			
+			// Should not return error when skipPrerequisites is true
+			if err != nil {
+				t.Errorf("CheckPrerequisitesWithLevel() with skipPrerequisites should not return error, got: %v", err)
+			}
+		})
+	}
+}
+
+func TestGenerator_CheckPrerequisites_Compatibility(t *testing.T) {
+	generator := NewGenerator()
+
+	// Test that the original CheckPrerequisites method still works
+	err := generator.CheckPrerequisites()
+	
+	// We don't assert on the result since Docker may not be available in test environment
+	// We're just ensuring the method exists and runs
+	_ = err
+}

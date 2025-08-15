@@ -150,3 +150,89 @@ func NewCleanupError(path, message string, cause error) CleanupError {
 		Cause:   cause,
 	}
 }
+
+// DirectoryInferenceError represents an error during directory name inference
+type DirectoryInferenceError struct {
+	Path    string
+	Reason  string
+	Cause   error
+}
+
+func (e DirectoryInferenceError) Error() string {
+	if e.Cause != nil {
+		return fmt.Sprintf("directory name inference failed for '%s': %s (cause: %v)", e.Path, e.Reason, e.Cause)
+	}
+	return fmt.Sprintf("directory name inference failed for '%s': %s", e.Path, e.Reason)
+}
+
+// Unwrap returns the underlying error
+func (e DirectoryInferenceError) Unwrap() error {
+	return e.Cause
+}
+
+// NewDirectoryInferenceError creates a new DirectoryInferenceError
+func NewDirectoryInferenceError(path, reason string, cause error) DirectoryInferenceError {
+	return DirectoryInferenceError{
+		Path:   path,
+		Reason: reason,
+		Cause:  cause,
+	}
+}
+
+// DockerError represents a Docker-related error with user-friendly guidance
+type DockerError struct {
+	Component string
+	Issue     string
+	Guidance  string
+	Cause     error
+}
+
+func (e DockerError) Error() string {
+	if e.Cause != nil {
+		return fmt.Sprintf("Docker %s issue: %s. %s (cause: %v)", e.Component, e.Issue, e.Guidance, e.Cause)
+	}
+	return fmt.Sprintf("Docker %s issue: %s. %s", e.Component, e.Issue, e.Guidance)
+}
+
+// Unwrap returns the underlying error
+func (e DockerError) Unwrap() error {
+	return e.Cause
+}
+
+// NewDockerError creates a new DockerError
+func NewDockerError(component, issue, guidance string, cause error) DockerError {
+	return DockerError{
+		Component: component,
+		Issue:     issue,
+		Guidance:  guidance,
+		Cause:     cause,
+	}
+}
+
+// ProjectNameError represents an error with project name resolution or validation
+type ProjectNameError struct {
+	ProvidedName string
+	InferredName string
+	Issue        string
+	Suggestion   string
+}
+
+func (e ProjectNameError) Error() string {
+	if e.ProvidedName != "" {
+		return fmt.Sprintf("project name error for '%s': %s. %s", e.ProvidedName, e.Issue, e.Suggestion)
+	}
+	if e.InferredName != "" {
+		return fmt.Sprintf("project name error for inferred name '%s': %s. %s", e.InferredName, e.Issue, e.Suggestion)
+	}
+	return fmt.Sprintf("project name error: %s. %s", e.Issue, e.Suggestion)
+}
+
+// NewProjectNameError creates a new ProjectNameError
+func NewProjectNameError(providedName, inferredName, issue, suggestion string) ProjectNameError {
+	return ProjectNameError{
+		ProvidedName: providedName,
+		InferredName: inferredName,
+		Issue:        issue,
+		Suggestion:   suggestion,
+	}
+}

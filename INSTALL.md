@@ -4,9 +4,36 @@ This guide covers different ways to install the Microservice Bootstrapper CLI to
 
 ## Prerequisites
 
-- **Docker**: Required for running generated projects
+### For Installing and Using the CLI Tool
+- **No prerequisites** - The CLI tool runs independently
+
+### For Running Generated Projects
+- **Docker**: Required for running generated microservices
 - **Docker Compose**: Required for orchestrating multiple services
 - **Git**: Optional, for version control of generated projects
+
+### Docker Requirements vs Recommendations
+
+**For Project Generation (File Creation)**:
+- Docker is **NOT required** to generate project files
+- The tool will create all necessary files and configurations
+- You'll receive helpful warnings if Docker isn't available
+- All templates and boilerplate code are generated successfully
+
+**For Running Generated Projects**:
+- Docker is **required** to run the generated microservices
+- Docker Compose is **required** for multi-service orchestration
+- Without Docker, you can still:
+  - View and edit the generated code
+  - Modify configurations
+  - Set up manual development environments
+  - Use the generated code as a starting point
+
+**Recommended Workflow**:
+1. Install the CLI tool (no Docker needed)
+2. Generate your project structure (works without Docker)
+3. Install Docker when you're ready to run the services
+4. Use `docker-compose up` to start your microservices
 
 ## Installation Methods
 
@@ -97,8 +124,12 @@ strap --version
 # View help
 strap --help
 
-# Test project creation (in an empty directory)
-strap create --be=fastapi --fe=react --db=postgres --name=test-project
+# Test project creation using directory name
+mkdir test-project && cd test-project
+strap create --be=fastapi --fe=react --db=postgres
+
+# Or test with explicit name
+strap create --be=fastapi --fe=react --db=postgres --name=my-test-project
 ```
 
 ## Platform-Specific Notes
@@ -131,9 +162,23 @@ strap create --be=fastapi --fe=react --db=postgres --name=test-project
 - Use `sudo` for system-wide installation
 
 ### Docker Issues
+
+**Important**: Docker is NOT required for project generation, only for running generated projects.
+
+**If you see Docker warnings during project generation**:
+- This is normal and expected if Docker isn't running
+- All project files will still be generated successfully
+- You can install and start Docker later when ready to run the services
+
+**For running generated projects**:
 - Ensure Docker is installed and running
 - Check with `docker --version` and `docker-compose --version`
 - On Linux, ensure your user is in the `docker` group
+
+**Docker Installation**:
+- Download from [Docker's official site](https://docs.docker.com/get-docker/)
+- Follow platform-specific installation instructions
+- Start Docker Desktop (Windows/Mac) or Docker service (Linux)
 
 ### Windows Antivirus
 - Some antivirus software may flag the binary

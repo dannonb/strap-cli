@@ -3,7 +3,6 @@ package generator
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"text/template"
@@ -17,9 +16,10 @@ import (
 
 // Generator implements the ProjectGenerator interface
 type Generator struct {
-	templateEngine interfaces.TemplateEngine
-	fileManager    interfaces.FileSystemManager
-	validator      *validation.Validator
+	templateEngine    interfaces.TemplateEngine
+	fileManager       interfaces.FileSystemManager
+	validator         *validation.Validator
+	skipPrerequisites bool
 }
 
 // NewGenerator creates a new project generator instance
@@ -31,8 +31,23 @@ func NewGenerator() interfaces.ProjectGenerator {
 	}
 }
 
+// NewGeneratorForTesting creates a new project generator instance that skips prerequisite checks
+func NewGeneratorForTesting() interfaces.ProjectGenerator {
+	return &Generator{
+		templateEngine: templatepkg.NewEngine(),
+		fileManager:    filesystem.NewManager(),
+		validator:      validation.NewValidator(),
+		skipPrerequisites: true,
+	}
+}
+
 // Generate orchestrates the complete project generation process
 func (g *Generator) Generate(config interfaces.CLIConfig) error {
+	return g.GenerateWithMessenger(config, nil)
+}
+
+// GenerateWithMessenger orchestrates the complete project generation process with messenger support
+func (g *Generator) GenerateWithMessenger(config interfaces.CLIConfig, messenger interfaces.Messenger) error {
 	// Step 1: Validate configuration and prerequisites
 	fmt.Println("🔍 Validating configuration...")
 	if err := g.ValidateConfig(config); err != nil {
@@ -40,8 +55,16 @@ func (g *Generator) Generate(config interfaces.CLIConfig) error {
 	}
 
 	fmt.Println("🔧 Checking prerequisites...")
-	if err := g.CheckPrerequisites(); err != nil {
+	// Use generation-level prerequisites (no Docker requirement)
+	if err := g.CheckPrerequisitesWithLevel(interfaces.PrerequisiteGeneration); err != nil {
 		return fmt.Errorf("prerequisite check failed:\n%w", err)
+	}
+
+	// Check Docker availability and show warning if not available
+	if messenger != nil {
+		if err := g.CheckPrerequisitesWithLevel(interfaces.PrerequisiteExecution); err != nil {
+			messenger.ShowDockerWarning()
+		}
 	}
 
 	// Step 2: Determine project name and base path
@@ -80,9 +103,6 @@ func (g *Generator) Generate(config interfaces.CLIConfig) error {
 		return fmt.Errorf("failed to generate documentation: %w", err)
 	}
 
-	// Success message
-	g.printSuccessMessage(projectName, config)
-
 	return nil
 }
 
@@ -105,22 +125,37 @@ func (g *Generator) ValidateConfig(config interfaces.CLIConfig) error {
 
 // CheckPrerequisites verifies that required tools are available using the enhanced validator
 func (g *Generator) CheckPrerequisites() error {
+	if g.skipPrerequisites {
+		return nil
+	}
 	return g.validator.CheckPrerequisites()
 }
 
-// getProjectName determines the project name from config or current directory
+// CheckPrerequisitesWithLevel verifies prerequisites based on the specified level
+func (g *Generator) CheckPrerequisitesWithLevel(level interfaces.PrerequisiteLevel) error {
+	if g.skipPrerequisites {
+		return nil
+	}
+	
+	switch level {
+	case interfaces.PrerequisiteGeneration:
+		return g.validator.CheckGenerationPrerequisites()
+	case interfaces.PrerequisiteExecution:
+		return g.validator.CheckExecutionPrerequisites()
+	default:
+		return g.validator.CheckPrerequisites()
+	}
+}
+
+// getProjectName determines the project name from config
 func (g *Generator) getProjectName(config interfaces.CLIConfig) string {
+	// Project name should always be set by the CLI layer now
 	if config.ProjectName != "" {
 		return config.ProjectName
 	}
 
-	// Use current directory name as default
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "microservice-project"
-	}
-
-	return filepath.Base(cwd)
+	// Fallback for backward compatibility
+	return "microservice-project"
 }
 
 // handleDirectoryConflicts checks for existing files and handles conflicts using enhanced validation

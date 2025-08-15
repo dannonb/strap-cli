@@ -335,6 +335,49 @@ func TestValidator_validatePortConflicts(t *testing.T) {
 	}
 }
 
+func TestValidator_CheckGenerationPrerequisites(t *testing.T) {
+	validator := NewValidator()
+
+	// Test generation prerequisites (should only check filesystem access)
+	err := validator.CheckGenerationPrerequisites()
+	
+	// This should not fail even if Docker is not available
+	// It only checks disk space and write permissions
+	if err != nil {
+		// If it fails, it should be due to filesystem issues, not Docker
+		if containsString(err.Error(), "Docker") {
+			t.Error("CheckGenerationPrerequisites should not check Docker availability")
+		}
+	}
+}
+
+func TestValidator_CheckExecutionPrerequisites(t *testing.T) {
+	validator := NewValidator()
+
+	// Test execution prerequisites (should check Docker)
+	err := validator.CheckExecutionPrerequisites()
+	
+	// This may fail if Docker is not available, which is expected
+	// We're just testing that it attempts to check Docker
+	if err != nil {
+		// Error should be related to Docker, not filesystem
+		if !containsString(err.Error(), "Docker") {
+			t.Error("CheckExecutionPrerequisites should check Docker availability")
+		}
+	}
+}
+
+func TestValidator_CheckPrerequisites_Compatibility(t *testing.T) {
+	validator := NewValidator()
+
+	// Test that the original CheckPrerequisites method still works
+	err := validator.CheckPrerequisites()
+	
+	// This should check both filesystem and Docker
+	// We're just ensuring the method exists and runs
+	_ = err // We don't assert on the result since Docker may not be available in test environment
+}
+
 // Helper function to check if a string contains a substring
 func containsString(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || 

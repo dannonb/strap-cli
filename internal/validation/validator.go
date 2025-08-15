@@ -279,40 +279,259 @@ func (v *Validator) CheckPrerequisites() error {
 	return nil
 }
 
-// checkDocker verifies Docker is installed and running
-func (v *Validator) checkDocker() error {
-	// Check if Docker command exists
-	if err := v.checkCommand("docker", "--version"); err != nil {
-		return fmt.Errorf("Docker is required but not found. "+
-			"Please install Docker from https://docs.docker.com/get-docker/. "+
-			"Error: %w", err)
+// CheckGenerationPrerequisites verifies only what's needed for file generation
+func (v *Validator) CheckGenerationPrerequisites() error {
+	var prerequisiteErrors []error
+
+	// Check disk space (basic check)
+	if err := v.checkDiskSpace(); err != nil {
+		prerequisiteErrors = append(prerequisiteErrors, err)
 	}
 
-	// Check if Docker daemon is running
-	if err := v.checkCommand("docker", "info"); err != nil {
-		return fmt.Errorf("Docker is installed but not running. "+
-			"Please start Docker Desktop or the Docker daemon. "+
-			"Error: %w", err)
+	// Check write permissions
+	if err := v.checkWritePermissions(); err != nil {
+		prerequisiteErrors = append(prerequisiteErrors, err)
+	}
+
+	// Return combined prerequisite errors
+	if len(prerequisiteErrors) > 0 {
+		return v.combinePrerequisiteErrors(prerequisiteErrors)
 	}
 
 	return nil
 }
 
+// CheckExecutionPrerequisites verifies what's needed for running the generated project
+func (v *Validator) CheckExecutionPrerequisites() error {
+	var prerequisiteErrors []error
+
+	// Check Docker
+	if err := v.checkDocker(); err != nil {
+		prerequisiteErrors = append(prerequisiteErrors, err)
+	}
+
+	// Check Docker Compose
+	if err := v.checkDockerCompose(); err != nil {
+		prerequisiteErrors = append(prerequisiteErrors, err)
+	}
+
+	// Return combined prerequisite errors
+	if len(prerequisiteErrors) > 0 {
+		return v.combinePrerequisiteErrors(prerequisiteErrors)
+	}
+
+	return nil
+}
+
+// checkDocker verifies Docker is installed and running
+func (v *Validator) checkDocker() error {
+	// Check if Docker command exists
+	if err := v.checkCommand("docker", "--version"); err != nil {
+		return v.handleDockerNotInstalled(err)
+	}
+
+	// Check if Docker daemon is running
+	if err := v.checkCommand("docker", "info"); err != nil {
+		return v.handleDockerNotRunning(err)
+	}
+
+	return nil
+}
+
+// handleDockerNotInstalled provides specific guidance when Docker is not installed
+func (v *Validator) handleDockerNotInstalled(err error) error {
+	if strings.Contains(err.Error(), "executable file not found") {
+		return fmt.Errorf("Docker is not installed or not found in PATH. "+
+			"🐳 Docker Installation Guide:\n"+
+			"  • Download Docker Desktop: https://docs.docker.com/get-docker/\n"+
+			"  • Windows: Install Docker Desktop for Windows\n"+
+			"  • Mac: Install Docker Desktop for Mac\n"+
+			"  • Linux: Install Docker Engine or Docker Desktop\n"+
+			"  • After installation, restart your terminal\n"+
+			"  • Verify installation: docker --version\n"+
+			"  • Ensure Docker is in your system PATH\n"+
+			"Original error: %w", err)
+	}
+	
+	if strings.Contains(err.Error(), "permission denied") {
+		return fmt.Errorf("Docker command found but permission denied. "+
+			"🐳 Docker Permission Solutions:\n"+
+			"  • Linux: Add user to docker group: sudo usermod -aG docker $USER\n"+
+			"  • Linux: Log out and back in after adding to group\n"+
+			"  • Windows/Mac: Ensure Docker Desktop is properly installed\n"+
+			"  • Windows: Try running terminal as administrator\n"+
+			"  • Verify Docker Desktop is running and accessible\n"+
+			"  • Test with: docker ps\n"+
+			"Original error: %w", err)
+	}
+	
+	if strings.Contains(err.Error(), "access denied") || strings.Contains(err.Error(), "denied") {
+		return fmt.Errorf("Docker access denied. "+
+			"🐳 Docker Access Solutions:\n"+
+			"  • Ensure Docker Desktop is running\n"+
+			"  • Check Docker Desktop settings and permissions\n"+
+			"  • On Windows: Run as administrator if needed\n"+
+			"  • On Linux: Check docker group membership: groups $USER\n"+
+			"  • Restart Docker Desktop if recently installed\n"+
+			"Original error: %w", err)
+	}
+	
+	return fmt.Errorf("Docker is required but not accessible. "+
+		"🐳 General Docker Setup:\n"+
+		"  • Install Docker Desktop: https://docs.docker.com/get-docker/\n"+
+		"  • Ensure Docker is running and accessible\n"+
+		"  • Restart terminal after installation\n"+
+		"  • Verify with: docker --version && docker info\n"+
+		"Original error: %w", err)
+}
+
+// handleDockerNotRunning provides specific guidance when Docker is installed but not running
+func (v *Validator) handleDockerNotRunning(err error) error {
+	if strings.Contains(err.Error(), "Cannot connect to the Docker daemon") {
+		return fmt.Errorf("Docker is installed but the Docker daemon is not running. "+
+			"🐳 Docker Startup Solutions:\n"+
+			"  • Windows/Mac: Start Docker Desktop application\n"+
+			"  • Linux: Start Docker service: sudo systemctl start docker\n"+
+			"  • Wait 30-60 seconds for Docker to fully initialize\n"+
+			"  • Check Docker Desktop system tray icon (should be running)\n"+
+			"  • Verify startup: docker info\n"+
+			"  • If still failing, restart Docker Desktop completely\n"+
+			"Original error: %w", err)
+	}
+	
+	if strings.Contains(err.Error(), "permission denied") {
+		return fmt.Errorf("Docker daemon is running but permission denied. "+
+			"🐳 Docker Permission Solutions:\n"+
+			"  • Linux: Add user to docker group: sudo usermod -aG docker $USER\n"+
+			"  • Linux: Log out and back in after group change\n"+
+			"  • Linux: Alternative: sudo docker info (temporary fix)\n"+
+			"  • Windows/Mac: Ensure Docker Desktop has proper permissions\n"+
+			"  • Windows: Try running terminal as administrator\n"+
+			"  • Verify group membership: groups $USER | grep docker\n"+
+			"Original error: %w", err)
+	}
+	
+	if strings.Contains(err.Error(), "timeout") || strings.Contains(err.Error(), "context deadline exceeded") {
+		return fmt.Errorf("Docker daemon is not responding (timeout). "+
+			"🐳 Docker Timeout Solutions:\n"+
+			"  • Docker may still be starting - wait 1-2 minutes\n"+
+			"  • Check Docker Desktop status in system tray\n"+
+			"  • Restart Docker Desktop if it appears stuck\n"+
+			"  • Check system resources (CPU/Memory usage)\n"+
+			"  • Close other resource-intensive applications\n"+
+			"  • Try: docker system prune (if Docker partially works)\n"+
+			"Original error: %w", err)
+	}
+	
+	if strings.Contains(err.Error(), "dial unix") || strings.Contains(err.Error(), "socket") {
+		return fmt.Errorf("Docker socket connection failed. "+
+			"🐳 Docker Socket Solutions:\n"+
+			"  • Ensure Docker Desktop is fully started\n"+
+			"  • Linux: Check Docker socket: ls -la /var/run/docker.sock\n"+
+			"  • Linux: Fix socket permissions: sudo chmod 666 /var/run/docker.sock\n"+
+			"  • Restart Docker service: sudo systemctl restart docker\n"+
+			"  • Windows/Mac: Restart Docker Desktop\n"+
+			"Original error: %w", err)
+	}
+	
+	return fmt.Errorf("Docker is installed but not accessible. "+
+		"🐳 General Docker Troubleshooting:\n"+
+		"  • Ensure Docker Desktop is running (check system tray)\n"+
+		"  • Wait for Docker to fully start (can take 1-2 minutes)\n"+
+		"  • Restart Docker Desktop if needed\n"+
+		"  • Check Docker status: docker info\n"+
+		"  • Verify system resources are sufficient\n"+
+		"Original error: %w", err)
+}
+
 // checkDockerCompose verifies Docker Compose is available
 func (v *Validator) checkDockerCompose() error {
 	// Try modern Docker Compose (docker compose)
-	if err := v.checkCommand("docker", "compose", "version"); err == nil {
+	modernErr := v.checkCommand("docker", "compose", "version")
+	if modernErr == nil {
 		return nil
 	}
 
 	// Try legacy Docker Compose (docker-compose)
-	if err := v.checkCommand("docker-compose", "--version"); err == nil {
+	legacyErr := v.checkCommand("docker-compose", "--version")
+	if legacyErr == nil {
 		return nil
 	}
 
+	return v.handleDockerComposeNotFound(modernErr, legacyErr)
+}
+
+// handleDockerComposeNotFound provides specific guidance when Docker Compose is not found
+func (v *Validator) handleDockerComposeNotFound(modernErr, legacyErr error) error {
+	// Check if it's a Docker daemon issue first
+	if strings.Contains(modernErr.Error(), "Cannot connect to the Docker daemon") {
+		return fmt.Errorf("Docker Compose check failed because Docker daemon is not running. "+
+			"🐳 Docker Daemon Solutions:\n"+
+			"  • Start Docker Desktop first\n"+
+			"  • Wait for Docker to fully initialize\n"+
+			"  • Verify Docker is running: docker info\n"+
+			"  • Docker Compose is included with modern Docker installations\n"+
+			"  • Try again after Docker is running\n"+
+			"Original error: %v", modernErr)
+	}
+	
+	// Check if it's a permission issue
+	if strings.Contains(modernErr.Error(), "permission denied") {
+		return fmt.Errorf("Docker Compose check failed due to permission issues. "+
+			"🐳 Docker Compose Permission Solutions:\n"+
+			"  • Linux: Add user to docker group: sudo usermod -aG docker $USER\n"+
+			"  • Linux: Log out and back in after group change\n"+
+			"  • Windows/Mac: Ensure Docker Desktop has proper permissions\n"+
+			"  • Try running terminal as administrator (Windows)\n"+
+			"  • Verify Docker permissions: docker ps\n"+
+			"Original error: %v", modernErr)
+	}
+	
+	// Check if modern compose is not available but legacy might work
+	if strings.Contains(modernErr.Error(), "unknown command") {
+		if legacyErr != nil && strings.Contains(legacyErr.Error(), "executable file not found") {
+			return fmt.Errorf("Docker Compose is not installed. "+
+				"🐳 Docker Compose Installation:\n"+
+				"  • Modern Docker (recommended): Update to Docker Desktop latest\n"+
+				"  • Modern Docker includes 'docker compose' (no hyphen)\n"+
+				"  • Legacy: Install docker-compose separately\n"+
+				"  • Installation guide: https://docs.docker.com/compose/install/\n"+
+				"  • Verify installation: docker compose version\n"+
+				"  • Alternative: docker-compose --version (legacy)\n"+
+				"Modern error: %v, Legacy error: %v", modernErr, legacyErr)
+		}
+		
+		return fmt.Errorf("Docker Compose command not recognized. "+
+			"🐳 Docker Compose Command Solutions:\n"+
+			"  • Update Docker Desktop to latest version\n"+
+			"  • Modern syntax: docker compose (no hyphen)\n"+
+			"  • Legacy syntax: docker-compose (with hyphen)\n"+
+			"  • Check Docker version: docker --version\n"+
+			"  • Reinstall Docker Desktop if needed\n"+
+			"Modern error: %v", modernErr)
+	}
+	
+	// Check for version compatibility issues
+	if strings.Contains(modernErr.Error(), "version") || strings.Contains(modernErr.Error(), "compatibility") {
+		return fmt.Errorf("Docker Compose version compatibility issue. "+
+			"🐳 Docker Compose Version Solutions:\n"+
+			"  • Update Docker Desktop to latest version\n"+
+			"  • Check Docker version: docker --version\n"+
+			"  • Check Compose version: docker compose version\n"+
+			"  • Uninstall and reinstall Docker Desktop if needed\n"+
+			"  • Ensure system meets Docker requirements\n"+
+			"Modern error: %v, Legacy error: %v", modernErr, legacyErr)
+	}
+	
 	return fmt.Errorf("Docker Compose is required but not found. "+
-		"Please install Docker Compose from https://docs.docker.com/compose/install/. "+
-		"Modern Docker installations include Compose as 'docker compose'")
+		"🐳 General Docker Compose Solutions:\n"+
+		"  • Install/Update Docker Desktop: https://docs.docker.com/get-docker/\n"+
+		"  • Modern Docker includes Compose as 'docker compose'\n"+
+		"  • Verify installation: docker compose version\n"+
+		"  • For older Docker: install docker-compose separately\n"+
+		"  • Installation guide: https://docs.docker.com/compose/install/\n"+
+		"  • Restart terminal after installation\n"+
+		"Modern error: %v, Legacy error: %v", modernErr, legacyErr)
 }
 
 // checkDiskSpace performs a basic disk space check
